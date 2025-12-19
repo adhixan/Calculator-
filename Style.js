@@ -1,39 +1,42 @@
 const display = document.getElementById("display");
 
-/* 🔊 Speech */
 function speak(text) {
   const msg = new SpeechSynthesisUtterance(text);
   msg.lang = "en-IN";
   speechSynthesis.speak(msg);
 }
 
-/* Button press */
 function press(value) {
-  display.value += value;
-  speak(value.replace('*', 'multiply').replace('/', 'divide'));
+  if (display.innerText === "0") {
+    display.innerText = value;
+  } else {
+    display.innerText += value;
+  }
+  speak(value);
 }
 
-/* Clear */
 function clearDisplay() {
-  display.value = "";
+  display.innerText = "0";
   speak("Cleared");
 }
 
-/* Calculate */
 function calculate() {
   try {
-    const result = eval(display.value);
-    display.value = result;
+    let expression = display.innerText
+      .replace(/×/g, "*")
+      .replace(/÷/g, "/");
+
+    let result = Function("return " + expression)();
+    display.innerText = result;
     speak("Result is " + result);
   } catch {
-    display.value = "Error";
+    display.innerText = "Error";
     speak("Error");
   }
 }
 
-/* 🎤 Voice Input */
 function startVoice() {
-  if (!('webkitSpeechRecognition' in window)) {
+  if (!("webkitSpeechRecognition" in window)) {
     alert("Voice input not supported");
     return;
   }
@@ -44,16 +47,15 @@ function startVoice() {
   speak("Listening");
 
   recognition.onresult = function (event) {
-    let voiceText = event.results[0][0].transcript.toLowerCase();
+    let text = event.results[0][0].transcript.toLowerCase();
 
-    voiceText = voiceText
+    text = text
       .replace(/plus/g, "+")
       .replace(/minus/g, "-")
-      .replace(/multiply by|times/g, "*")
-      .replace(/divide by/g, "/")
-      .replace(/into/g, "*");
+      .replace(/times|multiply/g, "*")
+      .replace(/divide/g, "/");
 
-    display.value = voiceText;
-    speak("You said " + voiceText);
+    display.innerText = text;
+    speak(text);
   };
 }
