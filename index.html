@@ -2,20 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Voice Calculator</title>
+  <title>Advanced Voice Calculator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
 <div class="calculator">
-  <div class="display" id="display">0</div>
+  <div class="display-container">
+    <div class="display" id="display">0</div>
+    <canvas id="waveform" class="waveform"></canvas>
+  </div>
 
   <div class="buttons">
     <button class="op" onclick="clearDisplay()">AC</button>
     <button class="op" onclick="press('%')">%</button>
     <button class="op" onclick="press('/')">÷</button>
-    <button class="op" onclick="startVoice()">🎤</button>
+    <button class="mic-btn" id="micBtn" onclick="startVoice()">🎤</button>
 
     <button onclick="press('7')">7</button>
     <button onclick="press('8')">8</button>
