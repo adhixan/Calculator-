@@ -13,7 +13,8 @@ function speak(text) {
 
 /* ➕ Input */
 function press(val) {
-  display.innerText = display.innerText === "0" ? val : display.innerText + val;
+  if (display.innerText === "0") display.innerText = val;
+  else display.innerText += val;
 }
 
 function clearDisplay() {
@@ -21,10 +22,20 @@ function clearDisplay() {
   speak("Cleared");
 }
 
+/* 🔁 Normalize expression */
+function normalizeExpression(exp) {
+  return exp
+    .replace(/×/g, "*")
+    .replace(/÷/g, "/")
+    .replace(/−/g, "-")
+    .replace(/%/g, "/100");
+}
+
 /* 🧮 Calculate */
 function calculate() {
   try {
-    const result = Function("return " + display.innerText)();
+    let exp = normalizeExpression(display.innerText);
+    let result = Function("return " + exp)();
     display.innerText = result;
     speak("Result is " + result);
   } catch {
@@ -33,89 +44,95 @@ function calculate() {
   }
 }
 
-/* 🔢 Scientific Functions */
+/* 🔢 Scientific Buttons */
 function applyFunc(type) {
-  let v = parseFloat(display.innerText);
-  let r;
+  let value = parseFloat(display.innerText);
+  let result;
 
-  switch (type) {
-    case "sqrt": r = Math.sqrt(v); break;
-    case "square": r = v * v; break;
-    case "sin": r = Math.sin(v * Math.PI / 180); break;
-    case "cos": r = Math.cos(v * Math.PI / 180); break;
-    case "tan": r = Math.tan(v * Math.PI / 180); break;
-    case "fact": r = factorial(v); break;
+  if (isNaN(value)) {
+    display.innerText = "Error";
+    return;
   }
 
-  display.innerText = r;
-  speak("Result is " + r);
+  switch (type) {
+    case "sqrt":
+      result = Math.sqrt(value);
+      break;
+    case "square":
+      result = value * value;
+      break;
+    case "sin":
+      result = Math.sin(value * Math.PI / 180);
+      break;
+    case "cos":
+      result = Math.cos(value * Math.PI / 180);
+      break;
+    case "tan":
+      result = Math.tan(value * Math.PI / 180);
+      break;
+    case "fact":
+      result = factorial(value);
+      break;
+    default:
+      return;
+  }
+
+  display.innerText = result;
+  speak("Result is " + result);
 }
 
 /* ❗ Factorial */
 function factorial(n) {
-  if (n < 0) return "Error";
+  if (n < 0 || !Number.isInteger(n)) return "Error";
   let f = 1;
   for (let i = 1; i <= n; i++) f *= i;
   return f;
 }
 
-/* 🎤 Voice Recognition (FIXED) */
+/* 🎤 Voice Recognition */
 function startVoice() {
   if (!("webkitSpeechRecognition" in window)) {
-    alert("Chrome required for voice input");
+    alert("Voice input works only in Google Chrome");
     return;
   }
 
   recognition = new webkitSpeechRecognition();
   recognition.lang = "en-IN";
-  recognition.continuous = true;
-  recognition.interimResults = true;
+  recognition.continuous = false;
+  recognition.interimResults = false;
 
   recognition.onstart = () => micBtn.classList.add("listening");
-
   recognition.onend = () => micBtn.classList.remove("listening");
 
   recognition.onresult = (e) => {
-    let text = e.results[e.results.length - 1][0].transcript;
-    parseVoice(text.toLowerCase());
+    let text = e.results[0][0].transcript.toLowerCase();
+    parseVoice(text);
   };
 
   recognition.start();
 }
 
-/* 🧠 SMART VOICE NORMALIZER */
+/* 🧠 Smart Voice Parser */
 function parseVoice(text) {
-  const map = {
-    "plus": "+",
-    "minus": "-",
-    "add": "+",
-    "into": "*",
-    "multiply": "*",
-    "multiplied": "*",
-    "times": "*",
-    "divide": "/",
-    "divided": "/",
-    "by": "/",
-    "square root": "Math.sqrt",
-    "square": "**2",
-    "sin": "Math.sin",
-    "cos": "Math.cos",
-    "tan": "Math.tan",
-    "factorial": "factorial"
-  };
-
-  Object.keys(map).forEach(k => {
-    text = text.replaceAll(k, map[k]);
-  });
-
-  text = text.replace(/[^0-9+\-*/().! ]/g, "");
+  text = text
+    .replace(/percentage/g, "%")
+    .replace(/plus/g, "+")
+    .replace(/minus/g, "-")
+    .replace(/(times|multiply|multiplied|into)/g, "*")
+    .replace(/(divide|divided|by|over)/g, "/")
+    .replace(/square root of/g, "Math.sqrt")
+    .replace(/square of/g, "**2")
+    .replace(/sin/g, "Math.sin")
+    .replace(/cos/g, "Math.cos")
+    .replace(/tan/g, "Math.tan")
+    .replace(/factorial of (\d+)/g, (_, n) => factorial(Number(n)));
 
   try {
-    const result = Function("return " + text)();
+    let result = Function("return " + text)();
     display.innerText = result;
     speak("Result is " + result);
-    recognition.stop();
   } catch {
-    // ignore interim errors
+    display.innerText = "Error";
+    speak("Sorry, I did not understand");
   }
 }
