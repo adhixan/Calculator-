@@ -15,28 +15,42 @@
   </div>
 
   <div class="buttons">
+    <!-- Row 1 -->
     <button class="op" onclick="clearDisplay()">AC</button>
-    <button class="op" onclick="applyFunction('sqrt')">√</button>
-    <button class="op" onclick="applyFunction('square')">x²</button>
+    <button class="op" onclick="applyFunc('sqrt')">√</button>
+    <button class="op" onclick="applyFunc('square')">x²</button>
     <button class="mic-btn" id="micBtn" onclick="startVoice()">🎤</button>
 
+    <!-- Row 2 -->
+    <button class="op" onclick="applyFunc('sin')">sin</button>
+    <button class="op" onclick="applyFunc('cos')">cos</button>
+    <button class="op" onclick="applyFunc('tan')">tan</button>
+    <button class="op" onclick="applyFunc('fact')">x!</button>
+
+    <!-- Row 3 -->
     <button onclick="press('7')">7</button>
     <button onclick="press('8')">8</button>
     <button onclick="press('9')">9</button>
-    <button class="op" onclick="press('*')">×</button>
+    <button class="op" onclick="press('/')">÷</button>
 
+    <!-- Row 4 -->
     <button onclick="press('4')">4</button>
     <button onclick="press('5')">5</button>
     <button onclick="press('6')">6</button>
-    <button class="op" onclick="press('-')">−</button>
+    <button class="op" onclick="press('*')">×</button>
 
+    <!-- Row 5 -->
     <button onclick="press('1')">1</button>
     <button onclick="press('2')">2</button>
     <button onclick="press('3')">3</button>
-    <button class="op" onclick="press('+')">+</button>
+    <button class="op" onclick="press('-')">−</button>
 
+    <!-- Row 6 -->
     <button class="zero" onclick="press('0')">0</button>
     <button onclick="press('.')">.</button>
+    <button class="op" onclick="press('+')">+</button>
+
+    <!-- Row 7 -->
     <button class="equal" onclick="calculate()">=</button>
   </div>
 </div>
