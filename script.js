@@ -1,18 +1,17 @@
 const display = document.getElementById("display");
 const micBtn = document.getElementById("micBtn");
-const canvas = document.getElementById("waveform");
-const ctx = canvas.getContext("2d");
 
 let recognition;
 
 /* 🔊 Speak */
 function speak(text) {
+  speechSynthesis.cancel();
   const msg = new SpeechSynthesisUtterance(text);
   msg.lang = "en-IN";
   speechSynthesis.speak(msg);
 }
 
-/* ➕ Press */
+/* ➕ Input */
 function press(val) {
   display.innerText = display.innerText === "0" ? val : display.innerText + val;
 }
@@ -25,10 +24,7 @@ function clearDisplay() {
 /* 🧮 Calculate */
 function calculate() {
   try {
-    let exp = display.innerText
-      .replace(/×/g, "*")
-      .replace(/÷/g, "/");
-    let result = Function("return " + exp)();
+    const result = Function("return " + display.innerText)();
     display.innerText = result;
     speak("Result is " + result);
   } catch {
@@ -38,64 +34,88 @@ function calculate() {
 }
 
 /* 🔢 Scientific Functions */
-function applyFunction(type) {
-  let val = parseFloat(display.innerText);
-  let result;
+function applyFunc(type) {
+  let v = parseFloat(display.innerText);
+  let r;
 
-  if (type === "sqrt") result = Math.sqrt(val);
-  if (type === "square") result = val * val;
+  switch (type) {
+    case "sqrt": r = Math.sqrt(v); break;
+    case "square": r = v * v; break;
+    case "sin": r = Math.sin(v * Math.PI / 180); break;
+    case "cos": r = Math.cos(v * Math.PI / 180); break;
+    case "tan": r = Math.tan(v * Math.PI / 180); break;
+    case "fact": r = factorial(v); break;
+  }
 
-  display.innerText = result;
-  speak("Result is " + result);
+  display.innerText = r;
+  speak("Result is " + r);
 }
 
-/* 🎤 Voice Recognition */
+/* ❗ Factorial */
+function factorial(n) {
+  if (n < 0) return "Error";
+  let f = 1;
+  for (let i = 1; i <= n; i++) f *= i;
+  return f;
+}
+
+/* 🎤 Voice Recognition (FIXED) */
 function startVoice() {
   if (!("webkitSpeechRecognition" in window)) {
-    alert("Use Google Chrome for voice input");
+    alert("Chrome required for voice input");
     return;
   }
 
   recognition = new webkitSpeechRecognition();
   recognition.lang = "en-IN";
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
   recognition.onstart = () => micBtn.classList.add("listening");
+
   recognition.onend = () => micBtn.classList.remove("listening");
 
   recognition.onresult = (e) => {
-    let text = e.results[0][0].transcript.toLowerCase();
-    handleVoice(text);
+    let text = e.results[e.results.length - 1][0].transcript;
+    parseVoice(text.toLowerCase());
   };
 
   recognition.start();
 }
 
-/* 🧠 Smart Voice Parser */
-function handleVoice(text) {
-  text = text
-    .replace(/plus/g, "+")
-    .replace(/minus/g, "-")
-    .replace(/(times|multiply|multiplied|into)/g, "*")
-    .replace(/(divide|divided|by|over)/g, "/")
-    .replace(/square root of/g, "Math.sqrt")
-    .replace(/square of/g, "**2")
-    .replace(/sin/g, "Math.sin")
-    .replace(/cos/g, "Math.cos")
-    .replace(/tan/g, "Math.tan")
-    .replace(/factorial of (\d+)/g, (_, n) => factorial(n));
+/* 🧠 SMART VOICE NORMALIZER */
+function parseVoice(text) {
+  const map = {
+    "plus": "+",
+    "minus": "-",
+    "add": "+",
+    "into": "*",
+    "multiply": "*",
+    "multiplied": "*",
+    "times": "*",
+    "divide": "/",
+    "divided": "/",
+    "by": "/",
+    "square root": "Math.sqrt",
+    "square": "**2",
+    "sin": "Math.sin",
+    "cos": "Math.cos",
+    "tan": "Math.tan",
+    "factorial": "factorial"
+  };
+
+  Object.keys(map).forEach(k => {
+    text = text.replaceAll(k, map[k]);
+  });
+
+  text = text.replace(/[^0-9+\-*/().! ]/g, "");
 
   try {
-    let result = Function("return " + text)();
+    const result = Function("return " + text)();
     display.innerText = result;
     speak("Result is " + result);
+    recognition.stop();
   } catch {
-    display.innerText = "Error";
-    speak("Sorry, I didn't understand");
+    // ignore interim errors
   }
-}
-
-/* ❗ Factorial */
-function factorial(n) {
-  let f = 1;
-  for (let i = 1; i <= n; i++) f *= i;
-  return f;
 }
