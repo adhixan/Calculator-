@@ -1,93 +1,101 @@
-* {
-  box-sizing: border-box;
-  font-family: 'Segoe UI', Roboto, sans-serif;
+const display = document.getElementById("display");
+const micBtn = document.getElementById("micBtn");
+const canvas = document.getElementById("waveform");
+const ctx = canvas.getContext("2d");
+
+let recognition;
+
+/* 🔊 Speak */
+function speak(text) {
+  const msg = new SpeechSynthesisUtterance(text);
+  msg.lang = "en-IN";
+  speechSynthesis.speak(msg);
 }
 
-body {
-  margin: 0;
-  height: 100vh;
-  background: radial-gradient(circle at top left, #1e293b, #020617);
-  display: flex;
-  justify-content: center;
-  align-items: center;
+/* ➕ Press */
+function press(val) {
+  display.innerText = display.innerText === "0" ? val : display.innerText + val;
 }
 
-.calculator {
-  width: 340px;
-  background: rgba(30, 41, 59, 0.75);
-  backdrop-filter: blur(15px);
-  border-radius: 32px;
-  padding: 25px;
-  box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+function clearDisplay() {
+  display.innerText = "0";
+  speak("Cleared");
 }
 
-.display-container {
-  margin-bottom: 20px;
-  background: rgba(0,0,0,0.25);
-  border-radius: 15px;
-  padding: 10px;
+/* 🧮 Calculate */
+function calculate() {
+  try {
+    let exp = display.innerText
+      .replace(/×/g, "*")
+      .replace(/÷/g, "/");
+    let result = Function("return " + exp)();
+    display.innerText = result;
+    speak("Result is " + result);
+  } catch {
+    display.innerText = "Error";
+    speak("Invalid calculation");
+  }
 }
 
-.display {
-  height: 80px;
-  color: #f8fafc;
-  font-size: 42px;
-  text-align: right;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
+/* 🔢 Scientific Functions */
+function applyFunction(type) {
+  let val = parseFloat(display.innerText);
+  let result;
+
+  if (type === "sqrt") result = Math.sqrt(val);
+  if (type === "square") result = val * val;
+
+  display.innerText = result;
+  speak("Result is " + result);
 }
 
-.waveform {
-  width: 100%;
-  height: 40px;
-  opacity: 0;
+/* 🎤 Voice Recognition */
+function startVoice() {
+  if (!("webkitSpeechRecognition" in window)) {
+    alert("Use Google Chrome for voice input");
+    return;
+  }
+
+  recognition = new webkitSpeechRecognition();
+  recognition.lang = "en-IN";
+  recognition.onstart = () => micBtn.classList.add("listening");
+  recognition.onend = () => micBtn.classList.remove("listening");
+
+  recognition.onresult = (e) => {
+    let text = e.results[0][0].transcript.toLowerCase();
+    handleVoice(text);
+  };
+
+  recognition.start();
 }
 
-.waveform.active {
-  opacity: 1;
+/* 🧠 Smart Voice Parser */
+function handleVoice(text) {
+  text = text
+    .replace(/plus/g, "+")
+    .replace(/minus/g, "-")
+    .replace(/(times|multiply|multiplied|into)/g, "*")
+    .replace(/(divide|divided|by|over)/g, "/")
+    .replace(/square root of/g, "Math.sqrt")
+    .replace(/square of/g, "**2")
+    .replace(/sin/g, "Math.sin")
+    .replace(/cos/g, "Math.cos")
+    .replace(/tan/g, "Math.tan")
+    .replace(/factorial of (\d+)/g, (_, n) => factorial(n));
+
+  try {
+    let result = Function("return " + text)();
+    display.innerText = result;
+    speak("Result is " + result);
+  } catch {
+    display.innerText = "Error";
+    speak("Sorry, I didn't understand");
+  }
 }
 
-.buttons {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-}
-
-button {
-  height: 65px;
-  border-radius: 20px;
-  border: none;
-  font-size: 22px;
-  background: #334155;
-  color: white;
-  cursor: pointer;
-}
-
-.op {
-  background: #1e293b;
-  color: #a5b4fc;
-}
-
-.mic-btn {
-  background: #4f46e5;
-}
-
-.mic-btn.listening {
-  background: #ef4444;
-  animation: pulse 1.5s infinite;
-}
-
-.equal {
-  background: linear-gradient(135deg, #6366f1, #a855f7);
-}
-
-.zero {
-  grid-column: span 2;
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); }
-  70% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+/* ❗ Factorial */
+function factorial(n) {
+  let f = 1;
+  for (let i = 1; i <= n; i++) f *= i;
+  return f;
 }
