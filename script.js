@@ -1,98 +1,93 @@
-const display = document.getElementById("display");
-const canvas = document.getElementById("waveform");
-const ctx = canvas.getContext("2d");
-const micBtn = document.getElementById("micBtn");
-
-let recognition;
-let listening = false;
-
-/* 🔊 Speech output */
-function speak(text) {
-  if (!window.speechSynthesis) return;
-  const msg = new SpeechSynthesisUtterance(text);
-  msg.lang = "en-IN";
-  window.speechSynthesis.speak(msg);
+* {
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Roboto, sans-serif;
 }
 
-/* 🧮 Calculator logic */
-function press(value) {
-  display.innerText = display.innerText === "0" ? value : display.innerText + value;
+body {
+  margin: 0;
+  height: 100vh;
+  background: radial-gradient(circle at top left, #1e293b, #020617);
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-function clearDisplay() {
-  display.innerText = "0";
-  speak("Cleared");
+.calculator {
+  width: 340px;
+  background: rgba(30, 41, 59, 0.75);
+  backdrop-filter: blur(15px);
+  border-radius: 32px;
+  padding: 25px;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.6);
 }
 
-function calculate() {
-  try {
-    let exp = display.innerText.replace(/×/g, "*").replace(/÷/g, "/");
-    let result = Function("return " + exp)();
-    display.innerText = result;
-    speak("Result is " + result);
-  } catch {
-    display.innerText = "Error";
-    speak("Error");
-  }
+.display-container {
+  margin-bottom: 20px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 15px;
+  padding: 10px;
 }
 
-/* 🌊 Wave animation */
-let animationId;
-function drawWave() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.beginPath();
-  ctx.strokeStyle = "#818cf8";
-  ctx.lineWidth = 2;
-
-  for (let i = 0; i < canvas.width; i++) {
-    let y = 20 + Math.sin(i * 0.05 + Date.now() * 0.01) * 12;
-    ctx.lineTo(i, y);
-  }
-  ctx.stroke();
-  animationId = requestAnimationFrame(drawWave);
+.display {
+  height: 80px;
+  color: #f8fafc;
+  font-size: 42px;
+  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
-/* 🎤 Voice Input */
-function startVoice() {
-  if (!('webkitSpeechRecognition' in window)) {
-    alert("Voice input works only in Google Chrome");
-    return;
-  }
+.waveform {
+  width: 100%;
+  height: 40px;
+  opacity: 0;
+}
 
-  if (!recognition) {
-    recognition = new webkitSpeechRecognition();
-    recognition.lang = "en-IN";
-    recognition.continuous = false;
-    recognition.interimResults = false;
+.waveform.active {
+  opacity: 1;
+}
 
-    recognition.onstart = () => {
-      listening = true;
-      micBtn.classList.add("listening");
-      canvas.classList.add("active");
-      drawWave();
-      speak("Listening");
-    };
+.buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
 
-    recognition.onresult = (e) => {
-      let text = e.results[0][0].transcript.toLowerCase();
+button {
+  height: 65px;
+  border-radius: 20px;
+  border: none;
+  font-size: 22px;
+  background: #334155;
+  color: white;
+  cursor: pointer;
+}
 
-      text = text
-        .replace(/plus/g, "+")
-        .replace(/minus/g, "-")
-        .replace(/times|multiply/g, "*")
-        .replace(/divide|by/g, "/");
+.op {
+  background: #1e293b;
+  color: #a5b4fc;
+}
 
-      display.innerText = text;
-      calculate();
-    };
+.mic-btn {
+  background: #4f46e5;
+}
 
-    recognition.onend = () => {
-      listening = false;
-      micBtn.classList.remove("listening");
-      canvas.classList.remove("active");
-      cancelAnimationFrame(animationId);
-    };
-  }
+.mic-btn.listening {
+  background: #ef4444;
+  animation: pulse 1.5s infinite;
+}
 
-  if (!listening) recognition.start();
+.equal {
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+}
+
+.zero {
+  grid-column: span 2;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
