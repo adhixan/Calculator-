@@ -1,14 +1,22 @@
 const display = document.getElementById("display");
 const micBtn = document.getElementById("micBtn");
+const canvas = document.getElementById("waveform");
+const canvasCtx = canvas.getContext("2d");
 
 let recognition;
+let audioContext;
+let analyser;
+let source;
+let animationId;
 
 /* 🔊 SPEAK */
 function speak(text) {
-  speechSynthesis.cancel();
-  const msg = new SpeechSynthesisUtterance(text);
-  msg.lang = "en-IN";
-  speechSynthesis.speak(msg);
+  if ('speechSynthesis' in window) {
+    speechSynthesis.cancel();
+    const msg = new SpeechSynthesisUtterance(text);
+    msg.lang = "en-IN";
+    speechSynthesis.speak(msg);
+  }
 }
 
 /* ➕ BUTTON INPUT */
@@ -43,6 +51,7 @@ function sanitize(exp) {
 /* 🧮 CALCULATE (USED BY BUTTON + VOICE) */
 function calculateExpression(exp) {
   exp = sanitize(exp);
+  // Security Note: In a production app, use a math parser instead of eval
   const result = eval(exp);
 
   if (result === undefined || isNaN(result)) throw "Invalid";
@@ -92,20 +101,32 @@ function applyFunc(type) {
   display.innerText = exp;
 }
 
-/* 🎤 VOICE INPUT */
+/* 🎤 VOICE INPUT SETUP */
 function startVoice() {
-  if (!("webkitSpeechRecognition" in window)) {
-    alert("Use Google Chrome");
+  // 1. Cross-Browser Support Check
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    alert("Voice recognition is not supported in this browser. Please use Chrome, Edge, or Safari.");
     return;
   }
 
-  recognition = new webkitSpeechRecognition();
+  recognition = new SpeechRecognition();
   recognition.lang = "en-IN";
   recognition.continuous = false;
   recognition.interimResults = false;
 
-  recognition.onstart = () => micBtn.classList.add("listening");
-  recognition.onend = () => micBtn.classList.remove("listening");
+  // 2. Start Visualizer & UI changes
+  recognition.onstart = () => {
+    micBtn.classList.add("listening");
+    startVisualizer(); 
+  };
+
+  // 3. Cleanup on End
+  recognition.onend = () => {
+    micBtn.classList.remove("listening");
+    stopVisualizer(); 
+  };
 
   recognition.onresult = e => {
     const text = e.results[0][0].transcript.toLowerCase();
@@ -113,6 +134,70 @@ function startVoice() {
   };
 
   recognition.start();
+}
+
+/* 🌊 WAVEFORM VISUALIZER */
+function startVisualizer() {
+  if (!navigator.mediaDevices) return;
+
+  navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(stream => {
+      // Initialize Audio Context
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioContext.createAnalyser();
+      source = audioContext.createMediaStreamSource(stream);
+      
+      source.connect(analyser);
+      analyser.fftSize = 256;
+      
+      canvas.classList.add("active");
+      drawWaveform();
+    })
+    .catch(err => {
+      console.error("Microphone access denied for visualizer:", err);
+    });
+}
+
+function drawWaveform() {
+  const bufferLength = analyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+
+  function render() {
+    animationId = requestAnimationFrame(render);
+    analyser.getByteFrequencyData(dataArray);
+
+    // Clear Canvas
+    canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Config Styles
+    const barWidth = (canvas.width / bufferLength) * 2.5;
+    let barHeight;
+    let x = 0;
+
+    // Draw Bars
+    for (let i = 0; i < bufferLength; i++) {
+      barHeight = dataArray[i] / 2; // Scale down height
+      
+      // Gradient Color
+      const r = barHeight + 25 * (i / bufferLength);
+      const g = 250 * (i / bufferLength);
+      const b = 50;
+
+      canvasCtx.fillStyle = `rgb(${r},${g},${b})`;
+      canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+
+      x += barWidth + 1;
+    }
+  }
+  render();
+}
+
+function stopVisualizer() {
+  canvas.classList.remove("active");
+  if (animationId) cancelAnimationFrame(animationId);
+  if (audioContext) audioContext.close();
+  // Clear the canvas one last time
+  canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 /* 🧠 UNIVERSAL VOICE HANDLER */
@@ -130,7 +215,6 @@ function handleVoice(text) {
 
 /* 🔁 NORMALIZE ALL SPEECH */
 function normalizeSpeech(text) {
-  /* Number words → digits */
   const numbers = {
     zero: 0, one: 1, two: 2, three: 3, four: 4,
     five: 5, six: 6, seven: 7, eight: 8, nine: 9,
@@ -144,7 +228,6 @@ function normalizeSpeech(text) {
     text = text.replaceAll(w, numbers[w]);
   });
 
-  /* Operator & function mapping */
   return text
     .replace(/what is|calculate|find|equals|=/g, "")
     .replace(/plus|add/g, "+")
