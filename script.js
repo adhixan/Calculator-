@@ -43,7 +43,7 @@ function sanitize(exp) {
 /* 🧮 CALCULATE (USED BY BUTTON + VOICE) */
 function calculateExpression(exp) {
   exp = sanitize(exp);
-  // Using Function instead of eval for slightly better security practice
+  // Using Function constructor for a cleaner execution context
   const result = new Function(`return ${exp}`)();
 
   if (result === undefined || isNaN(result)) throw "Invalid";
@@ -96,7 +96,7 @@ function applyFunc(type) {
 /* 🎤 VOICE INPUT */
 function startVoice() {
   if (!("webkitSpeechRecognition" in window) && !("speechRecognition" in window)) {
-    alert("Speech recognition not supported in this browser. Please use Chrome.");
+    alert("Please use Google Chrome for voice features.");
     return;
   }
 
@@ -124,15 +124,16 @@ function handleVoice(text) {
     const result = calculateExpression(exp);
     display.innerText = result;
     speak("Result is " + result);
-  } catch {
+  } catch (err) {
+    console.error("Calculation Error:", err);
     display.innerText = "Error";
-    speak("Sorry, I didn't understand");
+    speak("Sorry, I didn't understand that.");
   }
 }
 
 /* 🔁 NORMALIZE ALL SPEECH */
 function normalizeSpeech(text) {
-  // 1. Digit Mapping (Extended)
+  // 1. EXTENDED DIGIT MAPPING (0-99)
   const units = {
     zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, 
     six: 6, seven: 7, eight: 8, nine: 9, ten: 10, 
@@ -144,35 +145,26 @@ function normalizeSpeech(text) {
     sixty: 60, seventy: 70, eighty: 80, ninety: 90
   };
 
-  // Replace tens (e.g., "twenty" -> "20")
-  Object.keys(tens).forEach(w => {
-    text = text.replaceAll(w, tens[w]);
-  });
-  // Replace units (e.g., "five" -> "5")
-  Object.keys(units).forEach(w => {
-    text = text.replaceAll(w, units[w]);
-  });
+  Object.keys(tens).forEach(w => { text = text.replaceAll(w, tens[w]); });
+  Object.keys(units).forEach(w => { text = text.replaceAll(w, units[w]); });
   
-  // Logic to combine "20 5" into "25"
+  // Combine compound numbers (e.g., "twenty five" -> "20 5" -> "25")
   text = text.replace(/(\d+)\s+(\d+)/g, (match, p1, p2) => {
     if (p1.endsWith('0') && p2.length === 1) return parseInt(p1) + parseInt(p2);
     return match;
   });
 
-  // 2. Operator & Keyword Mapping
+  // 2. OPERATOR & KEYWORD MAPPING
   return text
     .replace(/what is|calculate|find|equals|=/g, "")
-    // Addition
     .replace(/plus|add|sum of/g, "+")
-    // Subtraction
     .replace(/minus|subtract|less than/g, "-")
-    // Multiplication
     .replace(/multiply|multiplied by|times|into|product of/g, "*")
-    // Division
-    .replace(/divide|divided by|over/g, "/")
+    // FIX: Catch "divided by" or "divide" and replace with "/"
+    .replace(/divided by|divide by|divide|over/g, "/")
     // Exponents
     .replace(/(\d+)\s*(to the power of|power|raised to)\s*(\d+)/g, "Math.pow($1,$3)")
-    // Scientific Functions
+    // Scientific
     .replace(/(square root of|root|sqrt)\s*(\d+(\.\d+)?)/g, "Math.sqrt($2)")
     .replace(/(square of|squared)\s*(\d+(\.\d+)?)/g, "($2)**2")
     .replace(/sin(e)?\s*(of)?\s*(\d+)/g, "Math.sin($3*Math.PI/180)")
@@ -181,6 +173,8 @@ function normalizeSpeech(text) {
     .replace(/factorial\s*(of)?\s*(\d+)/g, "factorial($2)")
     .replace(/(\d+(\.\d+)?)\s*(percent|percentage)/g, "($1)/100")
     .replace(/pi/g, "Math.PI")
-    // Cleanup: Remove remaining text characters but keep Math functions
-    .replace(/[^0-9+\-*/().,MathpowPI]/g, "");
+    // 3. FINAL CLEANUP: Remove words like "by", "of", "the" that break math
+    // Deletes any letter that is NOT part of "Math", "factorial", or "pow"
+    .replace(/[a-z](?!(ath|factorial|pow))/g, "") 
+    .replace(/\s+/g, ""); // Remove all remaining spaces
 }
